@@ -1,0 +1,7 @@
+{
+  "REGION": "us-east-2",
+  "DB_ARN": "arn:aws:rds:us-east-2:xxxxxxxxxx:cluster:onetdb",
+  "DB_SECRET_ARN": "arn:aws:secretsmanager:us-east-2:xxxxxxxxxx:secret:onetdb-xxxxx",
+  "DB_NAME": "onetdb",
+  "DOWNLOAD_URL": "https://www.onetcenter.org/dl_files/database/db_24_0_mysql.zip"
+}

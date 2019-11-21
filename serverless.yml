@@ -1,0 +1,92 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: serverless-mysql-restore
+
+provider:
+  name: aws
+  runtime: python3.7
+  stage: ${opt:stage, 'dev'}
+  region: ${file(config.json):REGION}
+  iamRoleStatements:
+    - ${self:provider.sqsRoleStatements}
+    - ${self:provider.secretsManagerRoleStatements}
+    - ${self:provider.RDSDataServiceAccessRoleStatements}
+  sqsRoleStatements:
+    Effect: Allow
+    Action:
+      - sqs:*
+    Resource:
+      - arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:db-restore-trigger
+  secretsManagerRoleStatements:
+    Effect: Allow
+    Action:
+      - secretsmanager:*
+    Resource:
+      - ${file(config.json):DB_SECRET_ARN}
+  RDSDataServiceAccessRoleStatements:
+    Effect: Allow
+    Action:
+      - rds-data:*
+    Resource:
+      - "*"
+  environment:
+    DB_ARN: ${file(config.json):DB_ARN}
+    DB_SECRET_ARN: ${file(config.json):DB_SECRET_ARN}
+    DB_NAME: ${file(config.json):DB_NAME}
+    DOWNLOAD_URL: ${file(config.json):DOWNLOAD_URL}
+    TRIGGER_SQS_NAME: db-restore-trigger
+
+package:
+  exclude:
+    - node_modules/**
+    - env/**
+    - venv/**
+    - test.py
+
+functions:
+  api-trigger:
+    handler: handler.api_trigger
+    description: Trigger sqs
+    timeout: 30
+    events:
+      - http:
+          path: trigger
+          method: get
+          cors: true
+          integration: lambda
+          response:
+            headers:
+              Content-Type: "'application/json'"
+
+  sqs-trigger:
+    handler: handler.sqs_trigger
+    description: download zipfile, extract it and run sql files
+    timeout: 900
+    events:
+      - sqs:
+          arn: arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:db-restore-trigger
+
+resources:
+  Resources:
+      Messages:
+        Type: AWS::SQS::Queue
+        Properties:
+          QueueName: db-restore-trigger
+          MessageRetentionPeriod: 1209600
+          VisibilityTimeout: 1000
+
+plugins:
+  - serverless-python-requirements
+  - serverless-prune-plugin
+  - serverless-pseudo-parameters
